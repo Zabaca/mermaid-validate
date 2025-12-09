@@ -1,0 +1,54 @@
+{
+	"name": "@zabaca/mermaid-validate",
+	"version": "1.0.0",
+	"description": "Lightweight Mermaid diagram syntax validator using the official mermaid parser",
+	"type": "module",
+	"bin": {
+		"mermaid-validate": "dist/main.js"
+	},
+	"files": [
+		"dist",
+		"README.md"
+	],
+	"scripts": {
+		"build": "bun build src/main.ts --outdir dist --target bun --packages external",
+		"dev": "bun run src/main.ts",
+		"test": "bun test",
+		"check": "tsc --noEmit && biome check .",
+		"check:fix": "tsc --noEmit && biome check --write .",
+		"prepublishOnly": "bun run build",
+		"release:patch": "bun run check && bun test && bun pm version patch && bun publish && git push && git push --tags",
+		"release:minor": "bun run check && bun test && bun pm version minor && bun publish && git push && git push --tags",
+		"release:major": "bun run check && bun test && bun pm version major && bun publish && git push && git push --tags",
+		"release:dry": "bun publish --dry-run"
+	},
+	"keywords": [
+		"mermaid",
+		"validator",
+		"syntax",
+		"diagram",
+		"flowchart",
+		"cli",
+		"markdown"
+	],
+	"author": "Zabaca",
+	"license": "MIT",
+	"publishConfig": {
+		"access": "public"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/Zabaca/mermaid-validate.git"
+	},
+	"dependencies": {
+		"glob": "^13.0.0",
+		"jsdom": "^26.0.0",
+		"mermaid": "^11.4.1"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.2.6",
+		"@types/bun": "latest",
+		"@types/jsdom": "^21.1.7",
+		"typescript": "^5.0.0"
+	}
+}
