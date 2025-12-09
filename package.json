@@ -1,6 +1,6 @@
 {
 	"name": "@zabaca/mermaid-validate",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"description": "Lightweight Mermaid diagram syntax validator using the official mermaid parser",
 	"type": "module",
 	"bin": {
