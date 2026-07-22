@@ -1,4 +1,6 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
+import { readFile, stat } from "node:fs/promises";
+import { text as readStreamText } from "node:stream/consumers";
 import { glob } from "glob";
 import { validateDiagram, validateFile, validateMmdFile } from "./validator";
 
@@ -41,9 +43,11 @@ async function main() {
 	}
 
 	if (args.includes("-v") || args.includes("--version")) {
-		const pkg = await Bun.file(
+		const pkgText = await readFile(
 			new URL("../package.json", import.meta.url),
-		).json();
+			"utf8",
+		);
+		const pkg = JSON.parse(pkgText);
 		console.log(pkg.version);
 		process.exit(0);
 	}
@@ -63,7 +67,7 @@ async function main() {
 
 	// Handle stdin
 	if (input === "-") {
-		const stdin = await Bun.stdin.text();
+		const stdin = await readStreamText(process.stdin);
 		const result = await validateDiagram(stdin);
 
 		if (jsonOutput) {
@@ -80,13 +84,11 @@ async function main() {
 		process.exit(result.valid ? 0 : 1);
 	}
 
-	// Check if path exists
-	const file = Bun.file(input);
-	const stat = await file.exists();
+	const inputStat = await stat(input).catch(() => null);
 
 	let files: string[] = [];
 
-	if (!stat) {
+	if (inputStat === null) {
 		// Try as glob pattern
 		files = await glob(input, { nodir: true });
 		if (files.length === 0) {
@@ -95,20 +97,12 @@ async function main() {
 			);
 			process.exit(1);
 		}
+	} else if (inputStat.isDirectory()) {
+		files = await glob(`${input}/**/*.{md,mmd,markdown,mdx}`, {
+			nodir: true,
+		});
 	} else {
-		// Check if directory
-		const isDir = await Bun.file(input)
-			.text()
-			.then(() => false)
-			.catch(() => true);
-
-		if (isDir) {
-			files = await glob(`${input}/**/*.{md,mmd,markdown,mdx}`, {
-				nodir: true,
-			});
-		} else {
-			files = [input];
-		}
+		files = [input];
 	}
 
 	if (files.length === 0) {

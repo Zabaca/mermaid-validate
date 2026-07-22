@@ -21,6 +21,8 @@ npm install -g @zabaca/mermaid-validate
 bun add -g @zabaca/mermaid-validate
 ```
 
+Runs on Node.js >=18 or Bun — no Bun installation required to use the published package.
+
 ## Usage
 
 ### CLI

@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { JSDOM } from "jsdom";
 
 // Setup DOM environment before importing mermaid
@@ -86,7 +87,7 @@ export function extractMermaidBlocks(
 export async function validateFile(
 	filePath: string,
 ): Promise<FileValidationResult> {
-	const content = await Bun.file(filePath).text();
+	const content = await readFile(filePath, "utf8");
 	const blocks = extractMermaidBlocks(content);
 
 	const results: ValidationResult[] = [];
@@ -118,7 +119,7 @@ export async function validateFile(
 export async function validateMmdFile(
 	filePath: string,
 ): Promise<ValidationResult> {
-	const content = await Bun.file(filePath).text();
+	const content = await readFile(filePath, "utf8");
 	const result = await validateDiagram(content);
 
 	return {

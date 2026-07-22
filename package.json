@@ -6,17 +6,20 @@
 	"bin": {
 		"mermaid-validate": "dist/main.js"
 	},
+	"engines": {
+		"node": ">=18"
+	},
 	"files": [
 		"dist",
 		"README.md"
 	],
 	"scripts": {
-		"build": "bun build src/main.ts --outdir dist --target bun --packages external",
+		"build": "esbuild src/main.ts --bundle --platform=node --format=esm --outfile=dist/main.js --packages=external",
 		"dev": "bun run src/main.ts",
 		"test": "bun test",
 		"check": "tsc --noEmit && biome check .",
 		"check:fix": "tsc --noEmit && biome check --write .",
-		"prepublishOnly": "bun run build",
+		"prepublishOnly": "npm run build",
 		"release:patch": "bun run check && bun test && bun pm version patch && bun publish && git push && git push --tags",
 		"release:minor": "bun run check && bun test && bun pm version minor && bun publish && git push && git push --tags",
 		"release:major": "bun run check && bun test && bun pm version major && bun publish && git push && git push --tags",
@@ -49,6 +52,7 @@
 		"@biomejs/biome": "^2.2.6",
 		"@types/bun": "latest",
 		"@types/jsdom": "^21.1.7",
+		"esbuild": "^0.28.1",
 		"typescript": "^5.0.0"
 	}
 }
