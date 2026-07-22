@@ -1,4 +1,5 @@
 #!/usr/bin/env bun
+import { stat } from "node:fs/promises";
 import { glob } from "glob";
 import { validateDiagram, validateFile, validateMmdFile } from "./validator";
 
@@ -41,9 +42,9 @@ async function main() {
 	}
 
 	if (args.includes("-v") || args.includes("--version")) {
-		const pkg = await Bun.file(
+		const pkg = (await Bun.file(
 			new URL("../package.json", import.meta.url),
-		).json();
+		).json()) as { version: string };
 		console.log(pkg.version);
 		process.exit(0);
 	}
@@ -80,13 +81,11 @@ async function main() {
 		process.exit(result.valid ? 0 : 1);
 	}
 
-	// Check if path exists
-	const file = Bun.file(input);
-	const stat = await file.exists();
+	const inputStat = await stat(input).catch(() => null);
 
 	let files: string[] = [];
 
-	if (!stat) {
+	if (inputStat === null) {
 		// Try as glob pattern
 		files = await glob(input, { nodir: true });
 		if (files.length === 0) {
@@ -95,20 +94,12 @@ async function main() {
 			);
 			process.exit(1);
 		}
+	} else if (inputStat.isDirectory()) {
+		files = await glob(`${input}/**/*.{md,mmd,markdown,mdx}`, {
+			nodir: true,
+		});
 	} else {
-		// Check if directory
-		const isDir = await Bun.file(input)
-			.text()
-			.then(() => false)
-			.catch(() => true);
-
-		if (isDir) {
-			files = await glob(`${input}/**/*.{md,mmd,markdown,mdx}`, {
-				nodir: true,
-			});
-		} else {
-			files = [input];
-		}
+		files = [input];
 	}
 
 	if (files.length === 0) {
@@ -136,7 +127,7 @@ async function main() {
 				totalInvalid++;
 				if (!jsonOutput) {
 					console.log(`${RED}✗${RESET} ${filePath}`);
-					const errorLines = result.error?.split("\n").slice(0, 5) || [];
+					const errorLines = result.error?.split("\n").slice(0, 5) ?? [];
 					for (const line of errorLines) {
 						console.log(`  ${line}`);
 					}
@@ -169,7 +160,7 @@ async function main() {
 						console.log(
 							`${RED}✗${RESET} ${filePath}:block${block.blockIndex} (line ${block.lineNumber})`,
 						);
-						const errorLines = block.error?.split("\n").slice(0, 5) || [];
+						const errorLines = block.error?.split("\n").slice(0, 5) ?? [];
 						for (const line of errorLines) {
 							console.log(`  ${line}`);
 						}
@@ -207,7 +198,8 @@ async function main() {
 	process.exit(totalInvalid > 0 ? 1 : 0);
 }
 
-main().catch((e) => {
-	console.error(`${RED}Error: ${e.message}${RESET}`);
+main().catch((e: unknown) => {
+	const message = e instanceof Error ? e.message : String(e);
+	console.error(`${RED}Error: ${message}${RESET}`);
 	process.exit(1);
 });
