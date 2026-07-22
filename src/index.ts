@@ -1,7 +1,12 @@
 // Public API exports
 
-export type { FileValidationResult, ValidationResult } from "./validator";
+export type {
+	FileValidationResult,
+	MermaidBlock,
+	ValidationResult,
+} from "./validator";
 export {
+	DEFAULT_FENCES,
 	extractMermaidBlocks,
 	validateDiagram,
 	validateFile,

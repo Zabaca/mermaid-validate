@@ -1,6 +1,11 @@
 #!/usr/bin/env bun
 import { glob } from "glob";
-import { validateDiagram, validateFile, validateMmdFile } from "./validator";
+import {
+	DEFAULT_FENCES,
+	validateDiagram,
+	validateFile,
+	validateMmdFile,
+} from "./validator";
 
 const RED = "\x1b[31m";
 const GREEN = "\x1b[32m";
@@ -19,28 +24,35 @@ Arguments:
   -             Read from stdin
 
 Options:
-  -h, --help     Show this help message
-  -v, --version  Show version
-  -q, --quiet    Only output errors
-  --json         Output results as JSON
+  -h, --help      Show this help message
+  -v, --version   Show version
+  -q, --quiet     Only output errors
+  --json          Output results as JSON
+  --fence <name>  Additional fence language to treat as mermaid
+                  (repeatable; "mermaid" and "kroki-mermaid" are always on)
 
 Examples:
   mermaid-validate README.md
   mermaid-validate docs/
   mermaid-validate diagram.mmd
+  mermaid-validate --fence backstage-mermaid docs/
   echo "graph TD; A-->B" | mermaid-validate -
 `);
 }
 
 async function main() {
-	const args = process.argv.slice(2);
+	const rawArgs = process.argv.slice(2);
 
-	if (args.length === 0 || args.includes("-h") || args.includes("--help")) {
+	if (
+		rawArgs.length === 0 ||
+		rawArgs.includes("-h") ||
+		rawArgs.includes("--help")
+	) {
 		printUsage();
 		process.exit(0);
 	}
 
-	if (args.includes("-v") || args.includes("--version")) {
+	if (rawArgs.includes("-v") || rawArgs.includes("--version")) {
 		const pkg = await Bun.file(
 			new URL("../package.json", import.meta.url),
 		).json();
@@ -48,8 +60,28 @@ async function main() {
 		process.exit(0);
 	}
 
-	const quiet = args.includes("-q") || args.includes("--quiet");
-	const jsonOutput = args.includes("--json");
+	const quiet = rawArgs.includes("-q") || rawArgs.includes("--quiet");
+	const jsonOutput = rawArgs.includes("--json");
+
+	const fences = [...DEFAULT_FENCES];
+	const args: string[] = [];
+	for (let i = 0; i < rawArgs.length; i++) {
+		if (rawArgs[i] === "--fence") {
+			const value = rawArgs[i + 1];
+			if (value === undefined) {
+				console.error(
+					`${RED}Error: --fence requires a value, e.g. --fence kroki-mermaid${RESET}`,
+				);
+				process.exit(1);
+			}
+			if (!fences.includes(value)) {
+				fences.push(value);
+			}
+			i++;
+		} else {
+			args.push(rawArgs[i]);
+		}
+	}
 
 	// Filter out flags (but keep "-" for stdin)
 	const paths = args.filter((a) => a === "-" || !a.startsWith("-"));
@@ -118,8 +150,12 @@ async function main() {
 
 	let totalValid = 0;
 	let totalInvalid = 0;
-	const allResults: Array<{ file: string; valid: boolean; error?: string }> =
-		[];
+	const allResults: Array<{
+		file: string;
+		valid: boolean;
+		error?: string;
+		fence?: string;
+	}> = [];
 
 	for (const filePath of files) {
 		const isMmd = filePath.endsWith(".mmd") || filePath.endsWith(".mermaid");
@@ -149,7 +185,7 @@ async function main() {
 				error: result.error,
 			});
 		} else {
-			const result = await validateFile(filePath);
+			const result = await validateFile(filePath, fences);
 
 			if (result.totalBlocks === 0) {
 				continue; // Skip files with no mermaid blocks
@@ -180,6 +216,7 @@ async function main() {
 					file: `${filePath}:block${block.blockIndex}`,
 					valid: block.valid,
 					error: block.error,
+					fence: block.fence,
 				});
 			}
 		}

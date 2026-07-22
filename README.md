@@ -43,12 +43,28 @@ mermaid-validate --json README.md
 
 # Quiet mode (only errors)
 mermaid-validate -q docs/
+
+# Add a custom fence language (see "Supported fences" below)
+mermaid-validate --fence backstage-mermaid docs/
 ```
+
+### Supported fences
+
+Blocks are matched by the fence's language token, so attributes after the
+token (like ` ```mermaid title="flow" `) are fine. Out of the box two tokens
+are recognised:
+
+- ` ```mermaid ` — the standard fence
+- ` ```kroki-mermaid ` — the Kroki convention used by Backstage TechDocs and
+  other Kroki-based renderers
+
+If your platform uses another prefix, add it with `--fence <name>`
+(repeatable). The defaults stay active alongside anything you add.
 
 ### Programmatic API
 
 ```typescript
-import { validateDiagram, validateFile, extractMermaidBlocks } from "@zabaca/mermaid-validate";
+import { validateDiagram, validateFile, extractMermaidBlocks, DEFAULT_FENCES } from "@zabaca/mermaid-validate";
 
 // Validate a single diagram
 const result = await validateDiagram(`graph TD
@@ -66,8 +82,15 @@ console.log(fileResult);
 //   invalidBlocks: 0
 // }
 
-// Extract mermaid blocks from markdown
+// Extract mermaid blocks from markdown (includes kroki-mermaid fences)
 const blocks = extractMermaidBlocks(markdownContent);
+// [{ code: "graph TD...", startLine: 4, fence: "mermaid" }, ...]
+
+// Restrict or extend which fence languages are matched
+const custom = extractMermaidBlocks(markdownContent, [
+  ...DEFAULT_FENCES,
+  "backstage-mermaid",
+]);
 ```
 
 ## Exit Codes

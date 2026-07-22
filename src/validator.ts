@@ -21,7 +21,14 @@ export interface ValidationResult {
 	blockIndex: number;
 	error?: string;
 	lineNumber?: number;
+	fence?: string;
 }
+
+/**
+ * Fence languages treated as mermaid by default. `kroki-mermaid` matches the
+ * Backstage/Kroki convention of prefixing the renderer name.
+ */
+export const DEFAULT_FENCES: readonly string[] = ["mermaid", "kroki-mermaid"];
 
 export interface FileValidationResult {
 	filePath: string;
@@ -46,31 +53,49 @@ export async function validateDiagram(
 	}
 }
 
+export interface MermaidBlock {
+	code: string;
+	startLine: number;
+	fence: string;
+}
+
 /**
- * Extract mermaid blocks from markdown content
+ * Extract mermaid blocks from markdown content.
+ *
+ * A block opens when a fence's language token (the first word after the
+ * backticks) matches one of `fences`, so `\`\`\`mermaid title` still matches
+ * while `\`\`\`mermaidjs` does not.
  */
 export function extractMermaidBlocks(
 	content: string,
-): { code: string; startLine: number }[] {
-	const blocks: { code: string; startLine: number }[] = [];
+	fences: readonly string[] = DEFAULT_FENCES,
+): MermaidBlock[] {
+	const blocks: MermaidBlock[] = [];
 	const lines = content.split("\n");
 
 	let inBlock = false;
+	let currentFence = "";
 	let blockStart = 0;
 	let blockLines: string[] = [];
 
 	for (let i = 0; i < lines.length; i++) {
 		const line = lines[i];
+		const trimmed = line.trim();
 
-		if (line.trim().startsWith("```mermaid")) {
-			inBlock = true;
-			blockStart = i + 1;
-			blockLines = [];
-		} else if (inBlock && line.trim() === "```") {
+		if (!inBlock && trimmed.startsWith("```")) {
+			const token = trimmed.slice(3).trim().split(/\s+/)[0];
+			if (token !== undefined && fences.includes(token)) {
+				inBlock = true;
+				currentFence = token;
+				blockStart = i + 1;
+				blockLines = [];
+			}
+		} else if (inBlock && trimmed === "```") {
 			inBlock = false;
 			blocks.push({
 				code: blockLines.join("\n").trim(),
 				startLine: blockStart + 1, // 1-indexed
+				fence: currentFence,
 			});
 		} else if (inBlock) {
 			blockLines.push(line);
@@ -85,9 +110,10 @@ export function extractMermaidBlocks(
  */
 export async function validateFile(
 	filePath: string,
+	fences: readonly string[] = DEFAULT_FENCES,
 ): Promise<FileValidationResult> {
 	const content = await Bun.file(filePath).text();
-	const blocks = extractMermaidBlocks(content);
+	const blocks = extractMermaidBlocks(content, fences);
 
 	const results: ValidationResult[] = [];
 
@@ -100,6 +126,7 @@ export async function validateFile(
 			blockIndex: i + 1,
 			error: result.error,
 			lineNumber: block.startLine,
+			fence: block.fence,
 		});
 	}
 
