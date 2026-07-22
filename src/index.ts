@@ -1,6 +1,11 @@
 // Public API exports
 
-export type { FileValidationResult, ValidationResult } from "./validator";
+export { diagnoseError } from "./diagnostics";
+export type {
+	DiagnosticError,
+	FileValidationResult,
+	ValidationResult,
+} from "./validator";
 export {
 	extractMermaidBlocks,
 	validateDiagram,

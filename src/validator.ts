@@ -1,4 +1,5 @@
 import { JSDOM } from "jsdom";
+import { type DiagnosticError, diagnoseError } from "./diagnostics";
 
 // Setup DOM environment before importing mermaid
 const dom = new JSDOM("<!DOCTYPE html><html><body></body></html>", {
@@ -16,10 +17,12 @@ const dom = new JSDOM("<!DOCTYPE html><html><body></body></html>", {
 const mermaid = (await import("mermaid")).default;
 mermaid.initialize({ startOnLoad: false });
 
+export type { DiagnosticError } from "./diagnostics";
+
 export interface ValidationResult {
 	valid: boolean;
 	blockIndex: number;
-	error?: string;
+	error?: DiagnosticError;
 	lineNumber?: number;
 }
 
@@ -32,17 +35,20 @@ export interface FileValidationResult {
 }
 
 /**
- * Validate a single mermaid diagram
+ * Validate a single mermaid diagram. Pass `fileStartLine` (the 1-indexed
+ * file line of the diagram's first line) to get absolute file positions in
+ * the diagnostic.
  */
 export async function validateDiagram(
 	code: string,
-): Promise<{ valid: boolean; error?: string }> {
+	fileStartLine?: number,
+): Promise<{ valid: boolean; error?: DiagnosticError }> {
 	try {
 		await mermaid.parse(code);
 		return { valid: true };
 	} catch (e) {
-		const error = e instanceof Error ? e.message : String(e);
-		return { valid: false, error };
+		const raw = e instanceof Error ? e.message : String(e);
+		return { valid: false, error: diagnoseError(raw, fileStartLine) };
 	}
 }
 
@@ -93,7 +99,7 @@ export async function validateFile(
 
 	for (let i = 0; i < blocks.length; i++) {
 		const block = blocks[i];
-		const result = await validateDiagram(block.code);
+		const result = await validateDiagram(block.code, block.startLine);
 
 		results.push({
 			valid: result.valid,
@@ -119,7 +125,7 @@ export async function validateMmdFile(
 	filePath: string,
 ): Promise<ValidationResult> {
 	const content = await Bun.file(filePath).text();
-	const result = await validateDiagram(content);
+	const result = await validateDiagram(content, 1);
 
 	return {
 		valid: result.valid,
