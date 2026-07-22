@@ -1,11 +1,28 @@
 #!/usr/bin/env bun
 import { glob } from "glob";
-import { validateDiagram, validateFile, validateMmdFile } from "./validator";
+import {
+	type DiagnosticError,
+	validateDiagram,
+	validateFile,
+	validateMmdFile,
+} from "./validator";
 
 const RED = "\x1b[31m";
 const GREEN = "\x1b[32m";
 const YELLOW = "\x1b[33m";
 const RESET = "\x1b[0m";
+
+function printErrorLines(error: DiagnosticError | undefined) {
+	if (error === undefined) {
+		return;
+	}
+	for (const line of error.raw.split("\n").slice(0, 5)) {
+		console.log(`  ${line}`);
+	}
+	for (const recommendation of error.recommendations) {
+		console.log(`  ${YELLOW}hint:${RESET} ${recommendation}`);
+	}
+}
 
 function printUsage() {
 	console.log(`
@@ -74,7 +91,7 @@ async function main() {
 			console.log(`${GREEN}Valid${RESET}`);
 		} else {
 			console.log(`${RED}Invalid${RESET}`);
-			console.log(result.error);
+			printErrorLines(result.error);
 		}
 
 		process.exit(result.valid ? 0 : 1);
@@ -118,8 +135,11 @@ async function main() {
 
 	let totalValid = 0;
 	let totalInvalid = 0;
-	const allResults: Array<{ file: string; valid: boolean; error?: string }> =
-		[];
+	const allResults: Array<{
+		file: string;
+		valid: boolean;
+		error?: DiagnosticError;
+	}> = [];
 
 	for (const filePath of files) {
 		const isMmd = filePath.endsWith(".mmd") || filePath.endsWith(".mermaid");
@@ -136,10 +156,7 @@ async function main() {
 				totalInvalid++;
 				if (!jsonOutput) {
 					console.log(`${RED}✗${RESET} ${filePath}`);
-					const errorLines = result.error?.split("\n").slice(0, 5) || [];
-					for (const line of errorLines) {
-						console.log(`  ${line}`);
-					}
+					printErrorLines(result.error);
 				}
 			}
 
@@ -169,10 +186,7 @@ async function main() {
 						console.log(
 							`${RED}✗${RESET} ${filePath}:block${block.blockIndex} (line ${block.lineNumber})`,
 						);
-						const errorLines = block.error?.split("\n").slice(0, 5) || [];
-						for (const line of errorLines) {
-							console.log(`  ${line}`);
-						}
+						printErrorLines(block.error);
 					}
 				}
 

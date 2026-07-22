@@ -71,9 +71,15 @@ Summary: 2 valid, 0 invalid
   ...A[Function uuid() here]
   ----------------------^
   Expecting 'SQE', 'DOUBLECIRCLEEND'...
+  hint: Wrap the label in double quotes — an unquoted "(" starts a new shape: A["Function uuid() here"]
 
 Summary: 0 valid, 1 invalid
 ```
+
+With `--json`, each failing block carries a structured error — `message`,
+`raw` parser output, `lines` (`lines.file` is the absolute line in the
+markdown file), and `recommendations` with likely fixes — so results can be
+consumed programmatically without parsing the text output.
 
 ## Common Fixes
 
