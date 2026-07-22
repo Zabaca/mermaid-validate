@@ -6,12 +6,23 @@
 	"bin": {
 		"mermaid-validate": "dist/main.js"
 	},
+	"main": "./dist/index.js",
+	"module": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"default": "./dist/index.js"
+		},
+		"./package.json": "./package.json"
+	},
 	"files": [
 		"dist",
 		"README.md"
 	],
 	"scripts": {
-		"build": "bun build src/main.ts --outdir dist --target bun --packages external",
+		"build": "bun build src/main.ts --outdir dist --target bun --packages external && bun build src/index.ts --outdir dist --target bun --packages external && tsc --emitDeclarationOnly --outDir dist --noEmit false",
 		"dev": "bun run src/main.ts",
 		"test": "bun test",
 		"check": "tsc --noEmit && biome check .",
