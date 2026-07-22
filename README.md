@@ -45,6 +45,35 @@ mermaid-validate --json README.md
 mermaid-validate -q docs/
 ```
 
+### What errors look like
+
+Given a diagram with unquoted parentheses in a label — one of the most common
+mistakes:
+
+````markdown
+```mermaid
+graph TD
+    A[Function uuid() here] --> B[End]
+```
+````
+
+the validator points at the exact block, line, and parser complaint:
+
+```text
+✗ docs/architecture.md:block1 (line 12)
+  Parse error on line 2:
+  ...A[Function uuid() here] --> B[End]
+  -----------------------^
+  Expecting 'SQE', 'DOUBLECIRCLEEND', 'PE', ...
+```
+
+The fix is to quote the label: `A["Function uuid() here"]`.
+
+More worked failure examples — dangling arrows, misspelled diagram types, and
+what the CLI reports for each — live in
+[examples/broken-diagram.md](examples/broken-diagram.md). Everything in that
+file is invalid on purpose.
+
 ### Programmatic API
 
 ```typescript
