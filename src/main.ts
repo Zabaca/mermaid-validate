@@ -7,14 +7,24 @@ const GREEN = "\x1b[32m";
 const YELLOW = "\x1b[33m";
 const RESET = "\x1b[0m";
 
+const KNOWN_FLAGS = [
+	"-h",
+	"--help",
+	"-v",
+	"--version",
+	"-q",
+	"--quiet",
+	"--json",
+];
+
 function printUsage() {
 	console.log(`
-Usage: mermaid-validate [options] <file|directory|->
+Usage: mermaid-validate [options] <file|directory|->...
 
 Validate Mermaid diagram syntax using the official mermaid parser.
 
 Arguments:
-  <file>        Validate a single .md or .mmd file
+  <file>        Validate a .md or .mmd file (repeatable)
   <directory>   Recursively validate all .md/.mmd files
   -             Read from stdin
 
@@ -28,6 +38,7 @@ Examples:
   mermaid-validate README.md
   mermaid-validate docs/
   mermaid-validate diagram.mmd
+  mermaid-validate README.md docs/ diagram.mmd
   echo "graph TD; A-->B" | mermaid-validate -
 `);
 }
@@ -51,6 +62,14 @@ async function main() {
 	const quiet = args.includes("-q") || args.includes("--quiet");
 	const jsonOutput = args.includes("--json");
 
+	const unknown = args.find(
+		(a) => a !== "-" && a.startsWith("-") && !KNOWN_FLAGS.includes(a),
+	);
+	if (unknown !== undefined) {
+		console.error(`${RED}Error: Unknown option: ${unknown}${RESET}`);
+		process.exit(1);
+	}
+
 	// Filter out flags (but keep "-" for stdin)
 	const paths = args.filter((a) => a === "-" || !a.startsWith("-"));
 
@@ -59,10 +78,8 @@ async function main() {
 		process.exit(1);
 	}
 
-	const input = paths[0];
-
 	// Handle stdin
-	if (input === "-") {
+	if (paths.includes("-")) {
 		const stdin = await Bun.stdin.text();
 		const result = await validateDiagram(stdin);
 
@@ -80,36 +97,43 @@ async function main() {
 		process.exit(result.valid ? 0 : 1);
 	}
 
-	// Check if path exists
-	const file = Bun.file(input);
-	const stat = await file.exists();
+	const collected: string[] = [];
 
-	let files: string[] = [];
+	for (const input of paths) {
+		// Check if path exists
+		const file = Bun.file(input);
+		const stat = await file.exists();
 
-	if (!stat) {
-		// Try as glob pattern
-		files = await glob(input, { nodir: true });
-		if (files.length === 0) {
-			console.error(
-				`${RED}Error: File or directory not found: ${input}${RESET}`,
-			);
-			process.exit(1);
-		}
-	} else {
-		// Check if directory
-		const isDir = await Bun.file(input)
-			.text()
-			.then(() => false)
-			.catch(() => true);
-
-		if (isDir) {
-			files = await glob(`${input}/**/*.{md,mmd,markdown,mdx}`, {
-				nodir: true,
-			});
+		if (!stat) {
+			// Try as glob pattern
+			const matched = await glob(input, { nodir: true });
+			if (matched.length === 0) {
+				console.error(
+					`${RED}Error: File or directory not found: ${input}${RESET}`,
+				);
+				process.exit(1);
+			}
+			collected.push(...matched);
 		} else {
-			files = [input];
+			// Check if directory
+			const isDir = await Bun.file(input)
+				.text()
+				.then(() => false)
+				.catch(() => true);
+
+			if (isDir) {
+				collected.push(
+					...(await glob(`${input}/**/*.{md,mmd,markdown,mdx}`, {
+						nodir: true,
+					})),
+				);
+			} else {
+				collected.push(input);
+			}
 		}
 	}
+
+	const files = [...new Set(collected)];
 
 	if (files.length === 0) {
 		console.log(`${YELLOW}No markdown files found${RESET}`);

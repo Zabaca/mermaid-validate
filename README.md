@@ -35,6 +35,9 @@ mermaid-validate diagram.mmd
 # Validate all files in a directory
 mermaid-validate docs/
 
+# Validate several paths at once
+mermaid-validate README.md docs/ diagram.mmd
+
 # Validate from stdin
 echo "graph TD; A-->B" | mermaid-validate -
 
