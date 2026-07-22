@@ -1,5 +1,12 @@
 import { describe, expect, test } from "bun:test";
-import { extractMermaidBlocks, validateDiagram } from "./validator";
+import {
+	extractMermaidBlocks,
+	validateDiagram,
+	validateFile,
+} from "./validator";
+
+const examplePath = (name: string) =>
+	new URL(`../examples/${name}`, import.meta.url).pathname;
 
 describe("validateDiagram", () => {
 	test("should validate correct flowchart syntax", async () => {
@@ -98,5 +105,70 @@ graph TD
 	test("should handle empty content", () => {
 		const blocks = extractMermaidBlocks("");
 		expect(blocks.length).toBe(0);
+	});
+
+	test("should extract kroki-mermaid blocks by default", () => {
+		const content = `\`\`\`kroki-mermaid
+graph LR
+    A --> B
+\`\`\``;
+
+		const blocks = extractMermaidBlocks(content);
+		expect(blocks.length).toBe(1);
+		expect(blocks[0].fence).toBe("kroki-mermaid");
+		expect(blocks[0].code).toBe("graph LR\n    A --> B");
+	});
+
+	test("should match fences with trailing attributes", () => {
+		const content = `\`\`\`mermaid title="flow"
+graph TD
+    A --> B
+\`\`\``;
+
+		const blocks = extractMermaidBlocks(content);
+		expect(blocks.length).toBe(1);
+	});
+
+	test("should not match fences whose token merely starts with mermaid", () => {
+		const content = `\`\`\`mermaidjs
+graph TD
+    A --> B
+\`\`\``;
+
+		const blocks = extractMermaidBlocks(content);
+		expect(blocks.length).toBe(0);
+	});
+
+	test("should support custom fence lists", () => {
+		const content = `\`\`\`backstage-mermaid
+graph TD
+    A --> B
+\`\`\`
+
+\`\`\`mermaid
+graph TD
+    C --> D
+\`\`\``;
+
+		const blocks = extractMermaidBlocks(content, ["backstage-mermaid"]);
+		expect(blocks.length).toBe(1);
+		expect(blocks[0].fence).toBe("backstage-mermaid");
+	});
+});
+
+describe("validateFile with kroki-mermaid fences", () => {
+	test("should validate kroki-mermaid fences without extra configuration", async () => {
+		const result = await validateFile(examplePath("kroki-diagram.md"));
+		expect(result.totalBlocks).toBe(2);
+		expect(result.validBlocks).toBe(2);
+		expect(result.blocks[0].fence).toBe("kroki-mermaid");
+	});
+
+	test("should respect a custom fence list", async () => {
+		const result = await validateFile(examplePath("kroki-diagram.md"), [
+			"mermaid",
+		]);
+		expect(result.totalBlocks).toBe(1);
+		expect(result.blocks[0].fence).toBe("mermaid");
 	});
 });

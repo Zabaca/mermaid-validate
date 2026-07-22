@@ -7,6 +7,8 @@ description: Validate Mermaid diagram syntax in markdown files using the @zabaca
 
 Validates Mermaid diagram syntax using the official mermaid parser via `@zabaca/mermaid-validate`.
 
+Both ` ```mermaid ` and ` ```kroki-mermaid ` fences (the Backstage/Kroki convention) are validated by default. Other fence prefixes can be added with `--fence <name>`.
+
 ## When to Use
 
 **ALWAYS use this skill after:**
