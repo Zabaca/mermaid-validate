@@ -99,4 +99,39 @@ graph TD
 		const blocks = extractMermaidBlocks("");
 		expect(blocks.length).toBe(0);
 	});
+
+	test("should ignore a mermaid example nested inside a longer outer fence", () => {
+		// A doc demonstrating broken mermaid syntax inside a ````markdown
+		// fence used to be misread as a live block: the old matcher closed
+		// on the FIRST bare ``` it saw, which here is the inner example's
+		// closer, not the outer fence's.
+		const content = `Docs showing a broken example:
+
+\`\`\`\`markdown
+\`\`\`mermaid
+graph TD
+    A[Broken uuid() example] --> B
+\`\`\`
+\`\`\`\`
+
+\`\`\`mermaid
+graph TD
+    A --> B
+\`\`\``;
+
+		const blocks = extractMermaidBlocks(content);
+		expect(blocks.length).toBe(1);
+		expect(blocks[0].code).toBe("graph TD\n    A --> B");
+	});
+
+	test("should extract mermaid blocks opened with four backticks", () => {
+		const content = `\`\`\`\`mermaid
+graph TD
+    A --> B
+\`\`\`\``;
+
+		const blocks = extractMermaidBlocks(content);
+		expect(blocks.length).toBe(1);
+		expect(blocks[0].code).toBe("graph TD\n    A --> B");
+	});
 });

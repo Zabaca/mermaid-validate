@@ -46,8 +46,17 @@ export async function validateDiagram(
 	}
 }
 
+const FENCE_LINE = /^(`{3,})(.*)$/;
+
 /**
- * Extract mermaid blocks from markdown content
+ * Extract mermaid blocks from markdown content.
+ *
+ * Fences are tracked CommonMark-style: a fence only closes on a line with a
+ * run of at least as many backticks as opened it. Without this, a mermaid
+ * example shown inside a longer outer fence (e.g. a four-backtick
+ * ` ```` markdown ` block used to document mermaid syntax) is wrongly
+ * treated as a live diagram and validated (and typically fails, since such
+ * examples are often deliberately broken for illustration).
  */
 export function extractMermaidBlocks(
 	content: string,
@@ -55,24 +64,38 @@ export function extractMermaidBlocks(
 	const blocks: { code: string; startLine: number }[] = [];
 	const lines = content.split("\n");
 
-	let inBlock = false;
-	let blockStart = 0;
+	let open: { size: number; isMermaid: boolean; startLine: number } | null =
+		null;
 	let blockLines: string[] = [];
 
 	for (let i = 0; i < lines.length; i++) {
 		const line = lines[i];
+		const match = line.trim().match(FENCE_LINE);
 
-		if (line.trim().startsWith("```mermaid")) {
-			inBlock = true;
-			blockStart = i + 1;
-			blockLines = [];
-		} else if (inBlock && line.trim() === "```") {
-			inBlock = false;
-			blocks.push({
-				code: blockLines.join("\n").trim(),
-				startLine: blockStart + 1, // 1-indexed
-			});
-		} else if (inBlock) {
+		if (open === null) {
+			const info = match?.[2]?.trim();
+			// Backtick-fence info strings cannot themselves contain backticks
+			if (match !== null && info !== undefined && !info.includes("`")) {
+				open = {
+					size: match[1]?.length ?? 3,
+					isMermaid: info.startsWith("mermaid"),
+					startLine: i + 2, // 1-indexed first content line
+				};
+				blockLines = [];
+			}
+		} else if (
+			match !== null &&
+			(match[1]?.length ?? 0) >= open.size &&
+			match[2]?.trim() === ""
+		) {
+			if (open.isMermaid) {
+				blocks.push({
+					code: blockLines.join("\n").trim(),
+					startLine: open.startLine,
+				});
+			}
+			open = null;
+		} else if (open.isMermaid) {
 			blockLines.push(line);
 		}
 	}
