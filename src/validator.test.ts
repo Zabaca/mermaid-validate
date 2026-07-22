@@ -1,5 +1,13 @@
 import { describe, expect, test } from "bun:test";
-import { extractMermaidBlocks, validateDiagram } from "./validator";
+import {
+	extractMermaidBlocks,
+	validateDiagram,
+	validateFile,
+	validateMmdFile,
+} from "./validator";
+
+const examplePath = (name: string) =>
+	new URL(`../examples/${name}`, import.meta.url).pathname;
 
 describe("validateDiagram", () => {
 	test("should validate correct flowchart syntax", async () => {
@@ -98,5 +106,37 @@ graph TD
 	test("should handle empty content", () => {
 		const blocks = extractMermaidBlocks("");
 		expect(blocks.length).toBe(0);
+	});
+
+	test("should handle indented fences", () => {
+		const content = `- list item
+
+  \`\`\`mermaid
+  graph TD
+      A --> B
+  \`\`\``;
+
+		const blocks = extractMermaidBlocks(content);
+		expect(blocks.length).toBe(1);
+	});
+});
+
+describe("validateFile", () => {
+	test("should validate every block in a markdown file and count them correctly", async () => {
+		const result = await validateFile(examplePath("test-diagram.md"));
+		expect(result.totalBlocks).toBe(2);
+		expect(result.validBlocks).toBe(2);
+		expect(result.invalidBlocks).toBe(0);
+		expect(result.blocks[0].blockIndex).toBe(1);
+		expect(result.blocks[1].blockIndex).toBe(2);
+	});
+});
+
+describe("validateMmdFile", () => {
+	test("should validate a standalone .mmd file", async () => {
+		const result = await validateMmdFile(examplePath("flowchart.mmd"));
+		expect(result.valid).toBe(true);
+		expect(result.blockIndex).toBe(1);
+		expect(result.lineNumber).toBe(1);
 	});
 });
