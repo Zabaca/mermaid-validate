@@ -1,5 +1,12 @@
 import { describe, expect, test } from "bun:test";
-import { extractMermaidBlocks, validateDiagram } from "./validator";
+import {
+	extractMermaidBlocks,
+	validateDiagram,
+	validateFile,
+} from "./validator";
+
+const examplePath = (name: string) =>
+	new URL(`../examples/${name}`, import.meta.url).pathname;
 
 describe("validateDiagram", () => {
 	test("should validate correct flowchart syntax", async () => {
@@ -98,5 +105,18 @@ graph TD
 	test("should handle empty content", () => {
 		const blocks = extractMermaidBlocks("");
 		expect(blocks.length).toBe(0);
+	});
+});
+
+describe("examples/broken-diagram.md", () => {
+	test("every documented mistake still fails, with an error and a line number", async () => {
+		const result = await validateFile(examplePath("broken-diagram.md"));
+		expect(result.totalBlocks).toBe(3);
+		expect(result.invalidBlocks).toBe(3);
+		for (const block of result.blocks) {
+			expect(block.valid).toBe(false);
+			expect(block.error).toBeString();
+			expect(block.lineNumber).toBeGreaterThan(1);
+		}
 	});
 });

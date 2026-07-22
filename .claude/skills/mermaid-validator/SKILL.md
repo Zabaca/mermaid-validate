@@ -78,7 +78,7 @@ Summary: 0 valid, 1 invalid
 ## Common Fixes
 
 ### Parentheses in Labels
-```mermaid
+```text
 # Wrong - unquoted parentheses
 A[Function uuid() call]
 
@@ -86,24 +86,35 @@ A[Function uuid() call]
 A["Function uuid() call"]
 ```
 
-### HTML Tags in Labels
-```mermaid
-# Wrong - HTML tags
-A[Text<br/>More text]
+### Pipes in Labels
+```text
+# Wrong - a bare pipe starts an edge label
+A[option a|option b]
 
-# Correct - use quoted multiline
-A["Text
-More text"]
+# Correct - use quotes
+A["option a|option b"]
 ```
 
-### Special Characters
-```mermaid
-# Wrong - unescaped special chars
-A[Node → Target]
+### Dangling Arrows
+```text
+# Wrong - the first arrow has no target
+A --> --> B
 
-# Correct - use quotes or escape
-A["Node to Target"]
+# Correct - every arrow connects two nodes
+A --> B
 ```
+
+### Misspelled Diagram Types
+```text
+# Wrong - "sequenceDiagam" is not a diagram type
+sequenceDiagam
+
+# Correct
+sequenceDiagram
+```
+
+Note: `<br/>` tags and unicode characters like `→` in labels are **valid** in
+mermaid 11 — no need to rewrite them.
 
 ## Exit Codes
 
