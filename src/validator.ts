@@ -5,12 +5,11 @@ const dom = new JSDOM("<!DOCTYPE html><html><body></body></html>", {
 	pretendToBeVisual: true,
 });
 
-// biome-ignore lint/suspicious/noExplicitAny: DOM globals need any type
-(globalThis as any).window = dom.window;
-// biome-ignore lint/suspicious/noExplicitAny: DOM globals need any type
-(globalThis as any).document = dom.window.document;
-// biome-ignore lint/suspicious/noExplicitAny: DOM globals need any type
-(globalThis as any).DOMParser = dom.window.DOMParser;
+Object.assign(globalThis, {
+	window: dom.window,
+	document: dom.window.document,
+	DOMParser: dom.window.DOMParser,
+});
 
 // Dynamic import after DOM setup
 const mermaid = (await import("mermaid")).default;
